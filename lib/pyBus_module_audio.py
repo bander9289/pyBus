@@ -40,7 +40,7 @@ def init():
     PLAYLIST = CLIENT.playlistinfo()
     LIBRARY  = CLIENT.listallinfo()
     
-    repeat(True) # Repeat all tracks
+    repeat(False) # Do not repeat all tracks
   else:
     logging.critical('Failed to connect to MPD server')
     logging.critical("Sleeping 1 second and retrying")
@@ -53,6 +53,27 @@ def update():
   CLIENT.update()
   LIBRARY  = CLIENT.listallinfo()
   PLAYLIST = CLIENT.playlistinfo()
+
+def add(r):
+  try:
+    CLIENT.add(r)
+  except Exception, e:
+    logging.warning("Issue adding '%s'" % r)
+
+def clearPlaylist():
+  CLIENT.clear()
+
+def search():
+  CLIENT.search()
+
+def find():
+  CLIENT.find()
+
+def list():
+  CLIENT.list()
+
+def listall():
+  CLIENT.listall()
 
 def addAll():
   CLIENT.clear() # Clear current playlist

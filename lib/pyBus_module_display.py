@@ -17,6 +17,7 @@ TICK = 1 # sleep interval in seconds used after displaying a string from DISPLAY
 WRITER = None # Writer thread
 DISPLAY_TEXT = True # whether or not to allow the module to write to display (Note, immediateText() does not care about this)
 MAX_STRINGLEN = 12 # max characters we can fit on display
+ENABLED = False
 
 #####################################
 # FUNCTIONS
@@ -56,9 +57,10 @@ def insertStringToQue(string, pos=0):
   DISPLAY_QUE.insert(pos, string)
 
 def immediateText(string):
-  insertStringToQue(string)
-  WRITER.write()
-  updateQue()
+  if ENABLED:
+    insertStringToQue(string)
+    WRITER.write()
+    updateQue()
 
 def updateQue():
   global DISPLAY_QUE

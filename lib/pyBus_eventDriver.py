@@ -43,20 +43,20 @@ DIRECTIVES = {
       '380000' : 'd_cdSendStatus',
       '380100' : 'd_cdStopPlaying',
       '380300' : 'd_cdStartPlaying',
-      '380A00' : 'd_cdNext',
-      '380A01' : 'd_cdPrev',
-      '380700' : '',
-      '380701' : '',
-      '380601' : 'd_toggleSS', # 1 pressed
-      '380602' : 'd_togglePause', # 2 pressed
-      '380603' : 'd_testSpeed', # 3 pressed
-      '380604' : 'd_standup', # 4 pressed
-      '380605' : 'd_update', # 5 pressed
-      '380606' : 'd_RESET', # 6 pressed
-      '380400' : '', # prev Playlist function?
-      '380401' : '', # next Playlist function?
-      '380800' : 'd_cdRandom',
-      '380801' : 'd_cdRandom'
+      '380500' : 'd_cdNext', # >|
+      '380501' : 'd_cdPrev', # |<
+      '380700' : '', # 'SCAN' second short press
+      '380701' : '', # 'SCAN' first short press (repeats until second press)
+      '380601' : 'd_update', # 1 pressed
+      '380602' : 'd_cdRandom', # 2 pressed
+      '380603' : 'd_RESET', # 3 pressed
+      '380604' : 'd_togglePause', # 4 pressed
+      '380605' : '', # 5 pressed
+      '380606' : 'd_cdAddAll', # 6 pressed
+      '380400' : '', # >| in 'Man' mode
+      '380401' : '', # |< in 'Man' mode
+#      '380800' : 'd_cdRandom',# 'SCAN' second long press
+#      '380801' : 'd_cdRandom' # 'SCAN' first long press (repeats 'til 2nd press)
     }
   },
   '50' : {
@@ -71,6 +71,7 @@ WRITER = None
 SESSION_DATA = {}
 TICK = 0.02 # sleep interval in seconds used between iBUS reads
 AIRPLAY = False
+DISPLAY_ENABLED = False
 
 #####################################
 # FUNCTIONS
@@ -123,7 +124,7 @@ def manage(packet):
     else:
       logging.debug("Method (%s) does not exist" % methodName)
   else:
-    logging.debug("MethodName (%s) does not match a function" % methodName)
+    logging.debug("No method for src='%s' dst='%s' data='%s'" % (src, dst, dataString))
 
   return result
   
@@ -137,6 +138,7 @@ def listen():
 
 def shutDown():
   logging.debug("Quitting Audio Client")
+  pB_audio.stop()
   pB_audio.quit()
   logging.debug("Stopping Display Driver")
   pB_display.end()
@@ -172,6 +174,37 @@ def d_toggleSS(packet):
     pB_display.immediateText('SpeedSw: On')
   else: 
     pB_display.immediateText('SpeedSw: Off')
+
+def d_cdAddAll(packet):
+  pB_audio.addAll()
+
+#def d_cdNextAlbum(packet):
+#  try:
+#    artist = None
+#    album = None
+#    status = pB_audio.getInfo()
+#    if ('track' in status):
+#      trackStatus = status['track']
+#      if trackStatus:
+#        if ('artist' in trackStatus):
+#          artist = status['track']['artist']
+#        if ('album' in trackStatus):
+#          album = status['track']['album']
+#    if artist == None or album == None:
+#      logging.error("Cannot determine current artist= %s or album= %s" % (artist, album))
+#      pB_audio.update()
+#      d = pB_audio.listall()
+#      logging.info(d)
+#      return
+#
+#    logging.info("artist= %s, album= %s" % (artist, album))
+#    pB_audio.clearPlaylist()
+#    d = pB_audio.listall()
+#    logging.info(d)
+#  except:
+#    logging.error("Exception raised from d_cdNextAlbum")
+#    logging.error(traceback.format_exc())
+
 
 def d_togglePause(packet):
   global AIRPLAY
@@ -270,9 +303,13 @@ def d_cdRandom(packet):
   random = pB_audio.random(0, True)
   if random:
     pB_display.immediateText('Random: ON')
+    val = '01'
   else:
     pB_display.immediateText('Random: OFF')
+    val = '00'
   _displayTrackInfo(False)
+  cdSongHundreds, cdSong = _getTrackNumber()
+  WRITER.writeBusPacket('18', '68', ['39', '02', '09', '00', '3F', val, cdSongHundreds, cdSong])
 
 def d_testSpeed(packet):
   speedTrigger(110)
@@ -309,12 +346,13 @@ def writeCurrentTrack():
 
 # Sets the text stack to something..
 def _displayTrackInfo(text=True):
-  infoQue = []
-  textQue = []
-  if text:
-    textQue = _getTrackTextQue()
-  infoQue = _getTrackInfoQue()
-  pB_display.setQue(textQue + infoQue)
+  if DISPLAY_ENABLED:
+    infoQue = []
+    textQue = []
+    if text:
+      textQue = _getTrackTextQue()
+    infoQue = _getTrackInfoQue()
+    pB_display.setQue(textQue + infoQue)
 
 # Get some info text to display
 def _getTrackInfoQue():
@@ -333,7 +371,7 @@ def _getTrackNumber():
   cdSong = 0
   if ('status' in status):
     mpdStatus = status['status']
-    if ('song' in mpdStatus and 'playlistlength' in mpdStatus):
+    if ('song' in mpdStatus):
       cdSong = (int(mpdStatus['song'])+1) % 100
       cdSongHundreds = int(int(mpdStatus['song']) / 100)
   return cdSongHundreds, cdSong    
