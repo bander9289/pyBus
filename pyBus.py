@@ -46,23 +46,27 @@ def createParser():
 #####################################
 # MAIN
 #####################################
-parser   = createParser()
-results  = parser.parse_args()
-loglevel = results.verbose
-_startup_cwd = os.getcwd()
+def __main__():
+  parser   = createParser()
+  results  = parser.parse_args()
+  loglevel = results.verbose
+  _startup_cwd = os.getcwd()
+  
+  signal.signal(signal.SIGINT, signal_handler_quit) # Manage Ctrl+C
+  configureLogging(loglevel)
+  
+  devPath = sys.argv[1] if (len(sys.argv) > 1) else "/dev/ttyUSB0"
+  core.DEVPATH = devPath if devPath else "/dev/ttyUSB0"
+  
+  try:
+    core.initialize()
+    core.run()
+  except Exception:
+    logging.error("Caught unexpected exception:")
+    logging.error(traceback.format_exc())
+  
+  logging.critical("And I'm dead.")    
+  sys.exit(0)
 
-signal.signal(signal.SIGINT, signal_handler_quit) # Manage Ctrl+C
-configureLogging(loglevel)
-
-devPath = sys.argv[1] if (len(sys.argv) > 1) else "/dev/ttyUSB0"
-core.DEVPATH = devPath if devPath else "/dev/ttyUSB0"
-
-try:
-  core.initialize()
-  core.run()
-except Exception:
-  logging.error("Caught unexpected exception:")
-  logging.error(traceback.format_exc())
-
-logging.critical("And I'm dead.")    
-sys.exit(0)
+if __name__ == '__main__':
+  __main__()
